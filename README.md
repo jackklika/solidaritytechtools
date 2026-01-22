@@ -36,6 +36,7 @@ The maintainer will probably take care of this
 
 1. `uv version --bump patch` (or minor, major etc)
 1. `uv sync`
+1. `git add pyproject.toml uv.lock`
 1. `git commit -m "Release $(uv version)" && git tag v$(uv version --short)`
 1. `git push origin main --tags`
 
