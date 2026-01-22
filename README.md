@@ -27,3 +27,7 @@ This is useful for example if you want to export migrate resources from one ST a
 3. Start coding and make a MR :)
 
 Please use `ty` to check the type safety of your code. When possible, this will be added to pre-commit hooks.
+
+## Publishing
+
+1. `uv build`
