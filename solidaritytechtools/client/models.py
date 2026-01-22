@@ -1,3 +1,5 @@
+"""Representation of models represented in the ST api (requests and responses)"""
+
 from datetime import datetime
 from typing import Any, Literal, TypeVar
 

@@ -11,17 +11,6 @@ This is still in beta, and there is a bit more work to do. But you can still use
 ### Client  
 Call python methods to interact with the ST api. You can pass pydantic models and receive pydantic models in return, so you can rely on the response structure.
 
-## Todo: Contact Matching
-Given a contact export and a ST account with contacts, attempt to match the two, so you can perform operations.
-
-This is useful for example if you want to export migrate resources from one ST account to another, like notes or custom properties.
-
-## Using
-
-1. Add `solidaritytechtools` as a dependency via `uv add solidaritytechtools`, `pip install solidaritytechtools`, etc
-1. Import the client and models: `from solidaritytechtools import STClient, models`
-1. Use the client as a context manager:
-
 ```python
 from solidaritytechtools import STClient, models
 
@@ -41,6 +30,49 @@ with STClient(api_key="...") as client:
         "phone_number": "4145551234"
     })
 ```
+
+### JSON Export Tools
+
+The library includes tools for validating and parsing Solidarity Tech JSON export files into structured models.
+
+```python
+from solidaritytechtools import get_persons_from_json_export
+
+# Load and validate an export file
+people = get_persons_from_json_export("export-members-data.json")
+
+for person in people:
+    print(f"{person.first_name} {person.last_name} has {len(person.notes)} notes")
+```
+
+### Contact Matching
+
+Given a JSON contact export and a live ST account, you can find the best matches to link local data to live API users. This is extremely useful for migrating historical data (like notes) from one ST account to another.
+
+```python
+from solidaritytechtools import find_best_match
+
+# Returns a mapping of {person_id: ClientUserMatch}
+# Behind the scenes, this is using the `solidaritytechtools.client` and `solidaritytechtools.json_export`
+matches = find_best_match(
+    json_export_file="old_account_export.json",
+    api_key="new_account_api_key"
+)
+
+for person_id, match in matches.items():
+    if match:
+        print(f"Export Person {person_id} -> API User {match.user_id} ({match.confidence*100}% confidence)")
+```
+
+Current heuristics use email and phone for high-confidence matching, and name + zip code for lower-confidence fuzzy matching. **Please look through the code before using this in production to understand what it's doing.**
+
+
+## Using
+
+1. Add `solidaritytechtools` as a dependency via `uv add solidaritytechtools`, `pip install solidaritytechtools`, etc
+1. Import the client, models, or functions, like `from solidaritytechtools import STClient, models, find_best_match`
+
+See the `/examples` directory for scripts demonstrating usage.
 
 Using Pydantic models provides better type safety and IDE autocompletion, but you can always fall back to a `dict` if the API spec drifts or a model is missing a field.
 
