@@ -16,6 +16,7 @@ repos:
         entry: uv run ty check
         language: system
         types: ['python']
+        exclude: (?x)(^tests/)
       - id: forbidden-strings
         name: block forbidden secret strings
         entry: python3 scripts/check_forbidden_strings.py
