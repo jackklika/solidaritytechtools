@@ -11,10 +11,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.5.1",
+    "pre-commit>=4.6.0",
     "pytest>=9.1.1",
-    "ruff>=0.14.13",
-    "ty>=0.0.13",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.20",
+    "ty>=0.0.56",
 ]
 
 [build-system]
@@ -25,8 +26,12 @@ build-backend = "hatchling.build"
 line-length = 100
 lint.select = ["E", "F", "I", "UP", "B", "UP"]
 
-[tool.pytest.ini_options]
+[tool.pytest]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+relative_files = true
 
 [tool.ty.src]
 exclude = ["tests/**"]

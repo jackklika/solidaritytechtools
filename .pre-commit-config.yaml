@@ -1,21 +1,22 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version
-    rev: v0.14.13
-    hooks:
-      # Run the linter.
-      - id: ruff
-        args: [ --fix ]
-      # Run the formatter.
-      - id: ruff-format
   - repo: local
     hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types: ['python']
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types: ['python']
       - id: ty
         name: ty check
         entry: uv run ty check
         language: system
-        pass_filenames: false
-        always_run: true
+        types: ['python']
+        exclude: (?x)(^tests/)
       - id: forbidden-strings
         name: block forbidden secret strings
         entry: python3 scripts/check_forbidden_strings.py

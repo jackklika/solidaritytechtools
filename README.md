@@ -1,5 +1,13 @@
 # Solidarity Tech Tools
 
+[![PyPI - Latest Version](https://img.shields.io/pypi/v/solidaritytechtools?label=PyPI)](https://pypi.org/project/solidaritytechtools/)
+[![PyPI - Total Downloads](https://static.pepy.tech/personalized-badge/solidaritytechtools?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=BLUE&left_text=Total+PyPI+Downloads)](https://pepy.tech/projects/solidaritytechtools)
+[![PyPI - Monthly Downloads](https://static.pepy.tech/personalized-badge/solidaritytechtools?period=monthly&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=BLUE&left_text=Monthly+PyPI+Downloads)](https://pepy.tech/projects/solidaritytechtools)
+
+[![Build & Publish](https://img.shields.io/github/actions/workflow/status/jackklika/solidaritytechtools/release.yml?branch=main&label=Build%20%26%20Publish)](https://github.com/jackklika/solidaritytechtools/actions/workflows/release.yml)
+[![Python Checks](https://img.shields.io/github/actions/workflow/status/jackklika/solidaritytechtools/python.yml?branch=main&label=Python%20Checks)](https://github.com/jackklika/solidaritytechtools/actions/workflows/python.yml)
+[![Coverage](https://raw.githubusercontent.com/jackklika/solidaritytechtools/python-coverage-comment-action-data/badge.svg)](https://htmlpreview.github.io/?https://github.com/jackklika/solidaritytechtools/blob/python-coverage-comment-action-data/htmlcov/index.html)
+
 An unofficial python library to help you automate solidarity tech (ST).
 
 See the ST api page for more details: https://www.solidarity.tech/reference/
