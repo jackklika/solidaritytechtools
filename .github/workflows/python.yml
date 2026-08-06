@@ -114,7 +114,7 @@ jobs:
           activate-environment: true
       - env:
           UV_RESOLUTION: ${{ matrix.resolution }}
-        run: uv sync
+        run: uv pip install . --group dev
       - env:
           COVERAGE_FILE: .coverage.${{ matrix.os }}.${{ matrix.python-version }}.${{ matrix.resolution }}
         run: pytest --cov=solidaritytechtools
