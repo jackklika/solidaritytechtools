@@ -5,6 +5,8 @@ every user) and provide a cached, in-memory UserStore for batch operations such
 as matching a list of emails to ST ids.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import tempfile

@@ -1,7 +1,9 @@
 """Representation of models represented in the ST api (requests and responses)"""
 
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Any, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,7 +27,7 @@ class PaginationMeta(BaseModel):
     """Number of items skipped from the beginning of the result set."""
 
 
-class PaginatedResponse[T](BaseModel):
+class PaginatedResponse(BaseModel, Generic[T]):
     """
     Generic wrapper for API responses that return a list of items with pagination metadata.
     """

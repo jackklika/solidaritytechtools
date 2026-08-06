@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from solidaritytechtools.client import models
 from solidaritytechtools.client.base_client import STClient
 from solidaritytechtools.json_export.export import (

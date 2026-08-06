@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 
 import solidaritytechtools.tools.add_traffic_data as mod

@@ -15,6 +15,8 @@ The target custom property must already exist in your ST instance (a "number" or
 and set its key as TRAFFIC_SCORE_PROPERTY.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import re

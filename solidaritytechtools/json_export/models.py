@@ -1,5 +1,7 @@
 """Models of how data is represneted in the ST JSON export"""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Literal
 
