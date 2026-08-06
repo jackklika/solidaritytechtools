@@ -3,7 +3,11 @@ name = "solidaritytechtools"
 version = "0.2.0"
 description = "Add your description here"
 readme = "README.md"
+
+# Ensure this is as low as possible - we want as much compatibility as possible, 
+# especially so we have compatibility with parsonsproject.org
 requires-python = ">=3.10"
+
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

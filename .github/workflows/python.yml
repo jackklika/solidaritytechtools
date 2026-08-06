@@ -75,6 +75,10 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
           - "3.14"
         os:
           - ubuntu-latest
@@ -83,6 +87,23 @@ jobs:
         resolution:
           - highest
           - lowest-direct
+        # Full OS coverage on the oldest and newest supported versions; the
+        # intermediate versions only need one OS, since cross-OS breakage is
+        # driven by the platform rather than by the interpreter version.
+        # Delete this block for the full 30-job matrix.
+        exclude:
+          - os: windows-latest
+            python-version: "3.11"
+          - os: windows-latest
+            python-version: "3.12"
+          - os: windows-latest
+            python-version: "3.13"
+          - os: macos-latest
+            python-version: "3.11"
+          - os: macos-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.13"
     runs-on: ${{ matrix.os }}
 
     steps:
