@@ -4,7 +4,7 @@ version = "0.3.1"
 description = "Unofficial python sdk for Solidarity Tech"
 readme = "README.md"
 
-# Ensure this is as low as possible - we want as much compatibility as possible, 
+# Ensure this is as low as possible - we want as much compatibility as possible,
 # especially so we have compatibility with parsonsproject.org
 requires-python = ">=3.10"
 

@@ -22,9 +22,8 @@ jobs:
       - run: uv sync
       - id: run-ruff
         run: >-
-          ruff format
+          ruff format .
           --diff
-          .
 
   ruff-check:
     runs-on: ubuntu-latest
@@ -40,10 +39,9 @@ jobs:
       - run: uv sync
       - id: run-ruff-sarif
         run: >-
-          ruff check
+          ruff check .
           --output-format=sarif
           -o results.sarif
-          .
       - uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         if: ( success() || failure() ) && contains('["success", "failure"]', steps.run-ruff-sarif.outcome)
         with:
@@ -51,9 +49,8 @@ jobs:
       - id: run-ruff
         if: failure() && contains('["failure"]', steps.run-ruff-sarif.outcome)
         run: >-
-          ruff check
+          ruff check .
           --output-format=github
-          .
 
   ty:
     runs-on: ubuntu-latest
@@ -67,8 +64,7 @@ jobs:
       - run: uv sync
       - id: run-ty
         run: >-
-          ty check
-          .
+          ty check .
 
   pytest:
     strategy:
@@ -114,10 +110,14 @@ jobs:
           activate-environment: true
       - env:
           UV_RESOLUTION: ${{ matrix.resolution }}
-        run: uv sync
+        run: >-
+          uv pip install -e .
+          --group dev
       - env:
           COVERAGE_FILE: .coverage.${{ matrix.os }}.${{ matrix.python-version }}.${{ matrix.resolution }}
-        run: pytest --cov=solidaritytechtools
+        run: >-
+          pytest
+          --cov=solidaritytechtools
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.resolution }}

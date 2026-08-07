@@ -41,3 +41,6 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Excluded tooling files
+.coverage
