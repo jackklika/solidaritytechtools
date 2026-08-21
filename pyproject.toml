@@ -4,7 +4,7 @@ version = "0.3.1"
 description = "Unofficial python sdk for Solidarity Tech"
 readme = "README.md"
 
-# Ensure this is as low as possible - we want as much compatibility as possible, 
+# Ensure this is as low as possible - we want as much compatibility as possible,
 # especially so we have compatibility with parsonsproject.org
 requires-python = ">=3.10"
 
@@ -19,6 +19,14 @@ classifiers = [
 dependencies = [
     "httpx>=0.28.1",
     "pydantic>=2.12.5",
+]
+
+# Dataframe/parquet support, used by some scripts in /examples. Kept optional because pandas
+# and pyarrow are ~200MB installed and nothing in the library itself imports them.
+[project.optional-dependencies]
+analysis = [
+    "pandas>=2.2.3",
+    "pyarrow>=18.1.0",
 ]
 
 [dependency-groups]
@@ -46,4 +54,6 @@ branch = true
 relative_files = true
 
 [tool.ty.src]
-exclude = ["tests/**"]
+exclude = [
+    "tests/**",  # Need to define typing.Protocol for some tests to satisfy ty here, then remove exclude
+]
