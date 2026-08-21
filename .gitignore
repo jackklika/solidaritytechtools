@@ -7,6 +7,8 @@
 *.json
 *.geojson
 *.xlsx
+*.pdf
+*.parquet
 
 # Opt-in exceptions (add `!` lines here):
 # !tests/fixtures/example.json
