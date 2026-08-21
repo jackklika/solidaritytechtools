@@ -24,6 +24,14 @@ dependencies = [
     "pydantic>=2.12.5",
 ]
 
+# Dataframe/parquet support, used by some scripts in /examples. Kept optional because pandas
+# and pyarrow are ~200MB installed and nothing in the library itself imports them.
+[project.optional-dependencies]
+analysis = [
+    "pandas>=2.2.3",
+    "pyarrow>=18.1.0",
+]
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.6.0",
@@ -49,4 +57,4 @@ branch = true
 relative_files = true
 
 [tool.ty.src]
-exclude = ["tests/**"]
+exclude = []

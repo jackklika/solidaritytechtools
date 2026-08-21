@@ -29,6 +29,7 @@ from typing import Any, Final
 from solidaritytechtools.client.base_client import STClient
 from solidaritytechtools.client.models import Address, User, UserUpdate
 from solidaritytechtools.services.users import UserStore
+from solidaritytechtools.utils.membership import is_member_in_good_standing
 from solidaritytechtools.utils.traffic_score import (
     DEFAULT_MAX_DISTANCE_M,
     CountPoint,
@@ -42,9 +43,7 @@ logger = logging.getLogger(__name__)
 # in your ST instance as a number/input field.
 TRAFFIC_SCORE_PROPERTY: Final[str] = "traffic-aadt"
 
-# "Member in Good Standing" lives as an option in the "membership-status" property.
-MEMBERSHIP_STATUS_PROPERTY: Final[str] = "membership-status"
-MEMBER_IN_GOOD_STANDING_VALUE: Final[str] = "AfVqfj0n"
+# Membership state lives in custom user properties; see solidaritytechtools.utils.membership.
 
 # Count points at/above this AADT are treated as freeway-grade. Surface streets where
 # a yard sign is legible top out around here; freeway-grade US/State highways (e.g. the
@@ -76,17 +75,6 @@ class AddTrafficResult:
     @property
     def num_scored(self) -> int:
         return len(self.scored)
-
-
-def is_member_in_good_standing(user: User) -> bool:
-    """True if the user's membership-status property includes "Member in Good Standing"."""
-    prop = (user.custom_user_properties or {}).get(MEMBERSHIP_STATUS_PROPERTY)
-    if isinstance(prop, list):
-        return any(
-            isinstance(item, dict) and item.get("value") == MEMBER_IN_GOOD_STANDING_VALUE
-            for item in prop
-        )
-    return False
 
 
 def get_coordinates(user: User) -> tuple[float, float] | None:

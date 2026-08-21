@@ -7,6 +7,8 @@
 *.json
 *.geojson
 *.xlsx
+*.pdf
+*.parquet
 
 # Opt-in exceptions (add `!` lines here):
 # !tests/fixtures/example.json
@@ -17,6 +19,12 @@
 .forbidden-strings
 
 *.swp
+
+# Coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

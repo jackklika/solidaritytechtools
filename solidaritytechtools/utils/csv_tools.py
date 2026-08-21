@@ -27,7 +27,7 @@ def _content_is_mostly_emails(values: list[str]) -> bool:
     return valid / len(values) >= CONTENT_EMAIL_THRESHOLD
 
 
-def get_emails_from_csv(path: Path) -> list[str]:
+def get_emails_from_csv(path: Path | str) -> list[str]:
     """
     Given a csv path, find the column that looks like an 'email addresses' column and return all
     the emails.
