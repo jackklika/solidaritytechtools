@@ -1,6 +1,6 @@
 [project]
 name = "solidaritytechtools"
-version = "0.3.1"
+version = "0.3.2"
 description = "Unofficial python sdk for Solidarity Tech"
 readme = "README.md"
 authors = [{ "name" = "Jack Klika" }]
