@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
+from pathlib import Path
+
+import httpx
 
 import solidaritytechtools.tools.add_traffic_data as mod
+from solidaritytechtools.client.base_client import STClient
 from solidaritytechtools.client.models import Address, User
 from solidaritytechtools.tools.add_traffic_data import (
     TRAFFIC_SCORE_PROPERTY,
@@ -14,7 +19,7 @@ from solidaritytechtools.tools.add_traffic_data import (
     is_sign_visible_road,
     score_contacts,
 )
-from solidaritytechtools.utils.traffic_score import TrafficScore
+from solidaritytechtools.utils.traffic_score import TrafficScorer
 
 MIGS = [{"label": "Member in Good Standing", "value": "AfVqfj0n"}]
 
@@ -32,42 +37,17 @@ def _user(
     return User(id=user_id, hash_id=hash_id, address=address, custom_user_properties=props)
 
 
-class _FakeScorer:
-    """Maps (lat, lon) -> aadt; missing coords score as no-data (aadt=None)."""
-
-    def __init__(self, mapping: dict[tuple[float, float], int]):
-        self.mapping = mapping
-
-    def score(
-        self,
-        lat: float,
-        lon: float,
-        *,
-        street_hint: str | None = None,
-        max_distance_m: float = 400.0,
-    ) -> TrafficScore:
-        aadt = self.mapping.get((lat, lon))
-        return TrafficScore(
-            aadt=aadt,
-            year=None,
-            distance_m=None if aadt is None else 12.0,
-            location="",
-            county="",
-        )
+def _scorer(tmp_path: Path, points: dict[tuple[float, float], int]) -> TrafficScorer:
+    """A real TrafficScorer over a small GeoJSON fixture, one count point per (lat, lon)."""
+    features = [_feature(lon, lat, aadt, "MAIN ST") for (lat, lon), aadt in points.items()]
+    path = tmp_path / "counts.geojson"
+    path.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
+    return TrafficScorer(path)
 
 
-class _StubClient:
-    def __init__(self) -> None:
-        self.updates: list[tuple[int, object]] = []
-
-    def __enter__(self) -> _StubClient:
-        return self
-
-    def __exit__(self, *exc: object) -> bool:
-        return False
-
-    def update_user(self, user_id: int, data: object) -> None:
-        self.updates.append((user_id, data))
+def _client(handler: Callable[[httpx.Request], httpx.Response]) -> STClient:
+    """A real STClient whose HTTP layer is served by `handler` instead of the network."""
+    return STClient(api_key="x", transport=httpx.MockTransport(handler))
 
 
 def test_is_member_in_good_standing() -> None:
@@ -84,14 +64,14 @@ def test_get_coordinates() -> None:
     assert get_coordinates(User(id=3, address=Address(latitude=43.0))) is None
 
 
-def test_score_contacts_counts_and_sorting() -> None:
+def test_score_contacts_counts_and_sorting(tmp_path: Path) -> None:
     users = [
         _user(1, lat=43.0, lon=-88.0, hash_id="hash-1"),  # busy road
         _user(2, lat=44.0, lon=-89.0),  # quiet road
         _user(3, lat=45.0, lon=-90.0),  # no traffic data
         _user(4),  # no coordinates
     ]
-    scorer = _FakeScorer({(43.0, -88.0): 20000, (44.0, -89.0): 500})
+    scorer = _scorer(tmp_path, {(43.0, -88.0): 20000, (44.0, -89.0): 500})
 
     result = score_contacts(users, scorer)
 
@@ -112,9 +92,9 @@ def test_format_address() -> None:
     assert format_address(None) == ""
 
 
-def test_score_contacts_migs_filter() -> None:
+def test_score_contacts_migs_filter(tmp_path: Path) -> None:
     users = [_user(1, lat=43.0, lon=-88.0, migs=True), _user(2, lat=43.0, lon=-88.0, migs=False)]
-    scorer = _FakeScorer({(43.0, -88.0): 1000})
+    scorer = _scorer(tmp_path, {(43.0, -88.0): 1000})
 
     result = score_contacts(users, scorer, members_in_good_standing_only=True)
 
@@ -127,36 +107,48 @@ class _FakeStore:
         self.users = users
 
 
-def test_add_traffic_data_writes(monkeypatch) -> None:
+def test_add_traffic_data_writes(monkeypatch, tmp_path: Path) -> None:
     users = [_user(1, lat=43.0, lon=-88.0)]
     monkeypatch.setattr(
         mod.UserStore, "from_api", classmethod(lambda cls, *a, **k: _FakeStore(users))
     )
-    stub = _StubClient()
-    monkeypatch.setattr(mod, "STClient", lambda *a, **k: stub)
+    sent: list[tuple[str, object]] = []
 
-    result = add_traffic_data(api_key="x", scorer=_FakeScorer({(43.0, -88.0): 7500}))
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append((request.url.path, json.loads(request.content)))
+        return httpx.Response(200, json={"data": {"id": 1}})
+
+    monkeypatch.setattr(mod, "STClient", lambda *a, **k: _client(handler))
+
+    result = add_traffic_data(api_key="x", scorer=_scorer(tmp_path, {(43.0, -88.0): 7500}))
 
     assert result.updated == 1
     assert result.failed == 0
-    user_id, data = stub.updates[0]
-    assert user_id == 1
-    assert data.custom_user_properties == {TRAFFIC_SCORE_PROPERTY: "7500"}
+    path, body = sent[0]
+    assert path.endswith("/users/1")
+    assert body == {"custom_user_properties": {TRAFFIC_SCORE_PROPERTY: "7500"}}
 
 
-def test_add_traffic_data_dry_run_writes_nothing(monkeypatch) -> None:
+def test_add_traffic_data_dry_run_writes_nothing(monkeypatch, tmp_path: Path) -> None:
     users = [_user(1, lat=43.0, lon=-88.0)]
     monkeypatch.setattr(
         mod.UserStore, "from_api", classmethod(lambda cls, *a, **k: _FakeStore(users))
     )
-    stub = _StubClient()
-    monkeypatch.setattr(mod, "STClient", lambda *a, **k: stub)
+    sent: list[str] = []
 
-    result = add_traffic_data(api_key="x", dry_run=True, scorer=_FakeScorer({(43.0, -88.0): 7500}))
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(request.url.path)
+        return httpx.Response(200, json={"data": {"id": 1}})
+
+    monkeypatch.setattr(mod, "STClient", lambda *a, **k: _client(handler))
+
+    result = add_traffic_data(
+        api_key="x", dry_run=True, scorer=_scorer(tmp_path, {(43.0, -88.0): 7500})
+    )
 
     assert result.num_scored == 1
     assert result.updated == 0
-    assert stub.updates == []
+    assert sent == []
 
 
 def test_is_sign_visible_road() -> None:

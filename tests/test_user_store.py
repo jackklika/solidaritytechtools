@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import json
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
+import httpx
+
 from solidaritytechtools.client import models as client_models
+from solidaritytechtools.client.base_client import STClient
 from solidaritytechtools.services.users import UserStore, get_all_users, set_email_permission
 from solidaritytechtools.utils.emails import normalize_email
 
@@ -14,36 +19,9 @@ def _user(
     return client_models.User(id=user_id, email=email, created_at=created_at)
 
 
-class _StubListClient:
-    """Minimal stand-in for STClient.get_users used by get_all_users."""
-
-    def __init__(self, users: list[client_models.User]):
-        self._users = users
-        self.calls: list[tuple[int, int]] = []
-
-    def get_users(
-        self, limit: int = 20, offset: int = 0, since: int = 0, **kwargs: object
-    ) -> client_models.PaginatedResponse[client_models.User]:
-        self.calls.append((limit, offset))
-        page = self._users[offset : offset + limit]
-        meta = client_models.PaginationMeta(
-            total_count=len(self._users), limit=limit, offset=offset
-        )
-        return client_models.PaginatedResponse[client_models.User](data=page, meta=meta)
-
-
-class _StubUpdateClient:
-    """Minimal stand-in for STClient.update_user used by set_email_permission."""
-
-    def __init__(self, fail_ids: set[int] | None = None):
-        self.fail_ids = fail_ids or set()
-        self.updates: list[tuple[int, client_models.UserUpdate]] = []
-
-    def update_user(self, user_id: int, data: client_models.UserUpdate) -> client_models.User:
-        if user_id in self.fail_ids:
-            raise RuntimeError("boom")
-        self.updates.append((user_id, data))
-        return _user(user_id)
+def _client(handler: Callable[[httpx.Request], httpx.Response]) -> STClient:
+    """A real STClient whose HTTP layer is served by `handler` instead of the network."""
+    return STClient(api_key="x", transport=httpx.MockTransport(handler))
 
 
 def test_normalize_email() -> None:
@@ -53,29 +31,42 @@ def test_normalize_email() -> None:
 
 
 def test_get_all_users_paginates() -> None:
-    users = [_user(i, f"u{i}@example.com") for i in range(5)]
-    client = _StubListClient(users)
+    users = [{"id": i, "email": f"u{i}@example.com"} for i in range(5)]
+    requested: list[tuple[int, int]] = []
 
-    result = get_all_users(client, page_size=2)
+    def handler(request: httpx.Request) -> httpx.Response:
+        limit = int(request.url.params["_limit"])
+        offset = int(request.url.params["_offset"])
+        requested.append((limit, offset))
+        page = users[offset : offset + limit]
+        return httpx.Response(200, json={"data": page, "meta": {"total_count": len(users)}})
+
+    result = get_all_users(_client(handler), page_size=2)
 
     assert [u.id for u in result] == [0, 1, 2, 3, 4]
-    assert client.calls[0] == (2, 0)
+    assert requested[0] == (2, 0)
 
 
 def test_match_email_exact_is_case_and_whitespace_insensitive() -> None:
     store = UserStore([_user(1, "Jack@Example.com")])
-    assert store.match_email("  jack@example.COM ").id == 1
+    matched = store.match_email("  jack@example.COM ")
+    assert matched is not None
+    assert matched.id == 1
     assert store.match_email("nobody@example.com") is None
 
 
 def test_match_email_input_has_subaddress_account_is_bare() -> None:
     store = UserStore([_user(1, "jack@example.com")])
-    assert store.match_email("jack+newsletter@example.com").id == 1
+    matched = store.match_email("jack+newsletter@example.com")
+    assert matched is not None
+    assert matched.id == 1
 
 
 def test_match_email_account_has_subaddress_input_is_bare() -> None:
     store = UserStore([_user(1, "jack+promo@example.com")])
-    assert store.match_email("jack@example.com").id == 1
+    matched = store.match_email("jack@example.com")
+    assert matched is not None
+    assert matched.id == 1
 
 
 def test_match_email_subaddress_stripping_can_be_disabled() -> None:
@@ -89,7 +80,9 @@ def test_match_email_multiple_matches_picks_newest() -> None:
     store = UserStore([older, newer])
 
     # "jack+b" matches neither exactly; both strip to jack@example.com, newest wins.
-    assert store.match_email("jack+b@example.com").id == 2
+    matched = store.match_email("jack+b@example.com")
+    assert matched is not None
+    assert matched.id == 2
 
 
 def test_match_emails_keys_by_original_and_skips_misses() -> None:
@@ -108,14 +101,22 @@ def test_store_cache_round_trip(tmp_path: Path) -> None:
     loaded = UserStore.load(cache)
 
     assert [u.id for u in loaded.users] == [1, 2]
-    assert loaded.match_email("jack@example.com").id == 1
+    matched = loaded.match_email("jack@example.com")
+    assert matched is not None
+    assert matched.id == 1
 
 
 def test_set_email_permission_records_success_and_failure() -> None:
-    client = _StubUpdateClient(fail_ids={2})
+    sent: list[tuple[str, object]] = []
 
-    results = set_email_permission(client, [1, 2], permission=False)
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append((request.url.path, json.loads(request.content)))
+        if request.url.path.endswith("/2"):
+            return httpx.Response(500, json={"error": "boom"})
+        return httpx.Response(200, json={"data": {"id": 1}})
+
+    results = set_email_permission(_client(handler), [1, 2], permission=False)
 
     assert results == {1: True, 2: False}
-    assert client.updates == [(1, client.updates[0][1])]
-    assert client.updates[0][1].email_permission is False
+    assert sent[0][0].endswith("/users/1")
+    assert sent[0][1] == {"email_permission": False}

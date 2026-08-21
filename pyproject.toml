@@ -54,6 +54,4 @@ branch = true
 relative_files = true
 
 [tool.ty.src]
-exclude = [
-    "tests/**",  # Need to define typing.Protocol for some tests to satisfy ty here, then remove exclude
-]
+exclude = []

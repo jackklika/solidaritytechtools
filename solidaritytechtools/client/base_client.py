@@ -110,6 +110,7 @@ class STClient:
         max_retries: int = 5,
         retry_backoff_s: float = 1.0,
         max_retry_wait_s: float = 60.0,
+        transport: httpx.BaseTransport | None = None,
     ):
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
@@ -123,6 +124,7 @@ class STClient:
                 "Accept": "application/json",
             },
             timeout=timeout,
+            transport=transport,
         )
 
     def __enter__(self):

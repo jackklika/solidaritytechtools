@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import httpx
 import pytest
 
 import solidaritytechtools.client.base_client as bc
@@ -65,9 +66,10 @@ def test_raises_after_exhausting_retries(monkeypatch) -> None:
 
 def test_retry_after_falls_back_to_exponential_backoff() -> None:
     client = STClient(api_key="x", retry_backoff_s=1.0, max_retry_wait_s=60.0)
-    no_header = _FakeResp(429)
+    no_header = httpx.Response(429)
     assert client._retry_after_seconds(no_header, attempt=0) == 1.0
     assert client._retry_after_seconds(no_header, attempt=3) == 8.0
     assert client._retry_after_seconds(no_header, attempt=10) == 60.0  # capped
-    assert client._retry_after_seconds(_FakeResp(429, {"Retry-After": "30"}), attempt=0) == 30.0
+    with_header = httpx.Response(429, headers={"Retry-After": "30"})
+    assert client._retry_after_seconds(with_header, attempt=0) == 30.0
     client.close()
