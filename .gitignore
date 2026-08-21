@@ -20,6 +20,12 @@
 
 *.swp
 
+# Coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
