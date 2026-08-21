@@ -59,6 +59,9 @@ class CustomPropertyOption(BaseModel):
 
 
 class User(BaseModel):
+    # extra="allow" so fields the api adds are kept rather than silently dropped.
+    model_config = ConfigDict(extra="allow")
+
     id: int
     hash_id: str | None = None
     phone_number: str | None = None
@@ -76,6 +79,57 @@ class User(BaseModel):
     sms_permission: bool = False
     call_permission: bool = False
     email_permission: bool = False
+
+    updated_at: datetime | None = None
+    alternate_name: str | None = None
+    age: int | None = None
+    date_of_birth: str | None = None
+    timezone: str | None = None
+    referral_code: str | None = None
+    assessment: Any | None = None
+    tags: list[str] = Field(default_factory=list)
+    secondary_languages: list[str] = Field(default_factory=list)
+    # Additional contact details, useful as extra keys when matching people across datasets.
+    other_emails: list[str] = Field(default_factory=list)
+    other_phone_numbers: list[str] = Field(default_factory=list)
+
+    def custom_property(self, key: str) -> Any | None:
+        """Return the raw value of a custom user property, or None if unset."""
+        return (self.custom_user_properties or {}).get(key)
+
+    def custom_property_label(
+        self, key: str, *, value_labels: dict[str, str] | None = None
+    ) -> str | None:
+        """
+        Return the readable label of a custom user property.
+
+        Select and radio properties come back as a list of {"label", "value"} dicts, while date
+        and text properties come back as a bare string. Which property keys exist, and what the
+        opaque option codes mean, is per-organization configuration -- pass value_labels to
+        decode codes the api returned without a label.
+
+        params:
+            key: the custom property key, e.g. "membership-status"
+            value_labels: optional option code -> label map
+
+        returns: the label, or None if the property is unset or has no readable label
+        """
+        value = self.custom_property(key)
+        if value is None:
+            return None
+
+        if isinstance(value, str):
+            return (value_labels or {}).get(value, value)
+
+        if isinstance(value, list):
+            for item in value:
+                if not isinstance(item, dict):
+                    continue
+                if label := item.get("label"):
+                    return str(label)
+                if (code := item.get("value")) is not None:
+                    return (value_labels or {}).get(str(code), str(code))
+        return None
 
 
 class Chapter(BaseModel):
