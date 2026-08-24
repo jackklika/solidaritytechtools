@@ -17,6 +17,16 @@ jobs:
         with:
           python-version: 3.14
           activate-environment: true
+      # Blocks cutting a release with a known-vulnerable dependency tree. PRs only warn,
+      # so this is the point where it actually has to be clean.
+      - name: Audit dependencies
+        id: audit
+        run: uv audit --preview-features audit-command --locked
+      - name: Explain how to unblock the release
+        if: failure() && steps.audit.outcome == 'failure'
+        run: >-
+          echo "::notice::Fix with 'uv lock --upgrade-package <name>'. If no fix is available yet,
+          add the advisory id to [tool.uv.audit] ignore-until-fixed in pyproject.toml.
       - name: Build a binary wheel and a source tarball
         run: uv build
       - name: Store the distribution packages

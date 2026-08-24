@@ -17,6 +17,13 @@ This is a toolset for Solidarity Tech. It has a client, and may include other ut
   saying how to install it. `tests/` and `examples/` are excluded from `ty`, so a plain `uv sync` is enough to run
   every check that CI runs.
 - When changing or implementing any contact matching, prefer to use or extend the `ContactIndex` instead of doing your own thing.
+- `uv audit` checks the locked dependency tree for known vulnerabilities. It only warns on pull requests, but it blocks
+  the release workflow, so a vulnerable tree cannot be published. The usual fix is
+  `uv lock --upgrade-package <name>`, even for transitive dependencies. If that isn't practical, because no fix has been
+  released yet or the fix needs a major bump we aren't ready for, then ignoring the advisory in `[tool.uv.audit]` is a
+  legitimate answer: a blocked release helps nobody when there is nothing to upgrade to. Prefer `ignore-until-fixed`,
+  which stops ignoring once upstream ships a fix, over a plain `ignore`, which outlives the problem silently. Say why
+  next to each id. uv warns about ignore entries that no longer match anything, so stale ones surface on their own.
 
 # Code Style
 - Do not over-comment, only comment when it makes something more clear that may be confusing or not immediately obvious
