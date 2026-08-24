@@ -10,16 +10,18 @@
 
 An unofficial python library to help you automate solidarity tech (ST).
 
-See the ST api page for more details: https://www.solidarity.tech/reference/
+Based on the official ST api page: https://www.solidarity.tech/reference/
 
-This is technically in beta, but you can still use this in production if you are bold, and I am safely using it on thousands of records.  But **I recommend pinning specific versions in your dependencies** to be extra sure things don't break as we increment versions. 
+This library has tools that have been developed in the act of organizing and working with ST contact data, and should be useful to anyone doing analysis or advanced/bulk operations with Solidarity Tech data, especially when integrating with external data.
+
+solidaritytechtools is technically in beta, but you can still use this in production if you are bold, and I am safely using it on thousands of records. But **I recommend pinning specific versions in your dependencies** to be extra sure things don't break as we increment versions. 
 
 ## Getting Started
 
 ### Installing as a package (Normal usage)
 
 1. Add `solidaritytechtools` as a dependency via `uv add solidaritytechtools`, `pip install solidaritytechtools`, etc
-1. Import the client, models, or functions, like `from solidaritytechtools import STClient, models, find_best_match`
+1. Import the client, models, or functions, like `from solidaritytechtools import STClient, models, best_match_per_person`
 1. Pass your ST API Key where required, for example `UserStore.from_api(api_key="...")` or `STClient(api_key="...")`
 
 ### Working with source code / running examples (Advanced usage)
@@ -115,14 +117,14 @@ To run a whole dataset through at once, `match_contacts(left, right, left_keys, 
 
 #### JSON ST Export -> New ST Account
 
-Use `match_persons.find_best_match` to match a solidarity tech json export with a different ST account, for example to migrate notes or properties from one account to another.
+Use `export_matching.best_match_per_person` to match a solidarity tech json export with a different ST account, for example to migrate notes or properties from one account to another. Every person in the export gets an entry, so a `None` means nothing met the confidence threshold.
 
 ```python
-from solidaritytechtools import find_best_match
+from solidaritytechtools import best_match_per_person, ClientUserMatch
 
 # Returns a mapping of {person_id: ClientUserMatch}
 # Behind the scenes, this is using the `solidaritytechtools.client` and `solidaritytechtools.json_export`
-matches = find_best_match(
+matches: dict[int, ClientUserMatch | None] = best_match_per_person(
     json_export_file="old_account_export.json",
     api_key="new_account_api_key"
 )
@@ -134,15 +136,15 @@ for person_id, match in matches.items():
 
 ### Email Matching & Bulk User Operations
 
-Common operations like lookups or updating users require individual API calls per operation, which hits ST rate limits. There are limited batch endpoints.
+Common operations like lookups or updating users require individual API calls per operation, which hits ST rate limits. There are limited batch endpoints, so this makes it hard to work with bulk data.
 
-You can load every user once into a cached `UserStore` for fast local lookups and bulk updates, avoiding one API call per user (and the rate limits that come with it).
+My solution has been a a cached `UserStore` for fast local lookups and bulk updates, which loads all universe users into memory, and avoids one API call per user (and the rate limits that come with it).
 
 ```python
-from solidaritytechtools import STClient, UserStore, find_matches_emails, set_email_permission
+from solidaritytechtools import STClient, UserStore, match_emails_to_user_ids, set_email_permission
 
 # Map a list of emails -> ST user ids (optionally ignoring "+subaddressing")
-matches = find_matches_emails(["a@example.com", "b+promo@example.com"], api_key="...", strip_subaddress=True)
+matches = match_emails_to_user_ids(["a@example.com", "b+promo@example.com"], api_key="...", strip_subaddress=True)
 
 # Or build a reusable, file-cached store and query it locally
 store = UserStore.from_api(api_key="...")
@@ -202,6 +204,8 @@ for person in people:
 1. Start coding and make a MR :)
 1. Add some tests around your functionality
 1. Ensure all tests and github workflows are passing before requesting review, including `ty`, `ruff format`, and `ruff check`.
+
+Note that we purposely gitignore common data extensions like `*.csv`, `*.pdf`, or `*.parquet` since it is critical we do not introduce any PII into source control. So if you want to add a file with this format, for example for testing, you need to whitelist specific files in `.gitignore`.
 
 ### Contribution Guidelines:
 - Don't introduce new dependencies, especially heavy dependencies, unless it it makes sense to do so.

@@ -12,8 +12,8 @@ from time import sleep
 
 from solidaritytechtools import STClient
 from solidaritytechtools.client.models import UserNoteCreate
+from solidaritytechtools.export_matching import ClientUserMatch, best_match_per_person
 from solidaritytechtools.json_export.export import STJsonExport
-from solidaritytechtools.match_persons.match_persons import ClientUserMatch, find_best_match
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,9 @@ API_DELAY_SECONDS = 5.1
 
 def migrate_notes(*, dry_run: bool = False):
     logger.info("Fetching users and matching data...")
-    best_matches: dict[int, ClientUserMatch | None] = find_best_match(EXPORT_FILE_PATH, API_KEY)
+    best_matches: dict[int, ClientUserMatch | None] = best_match_per_person(
+        EXPORT_FILE_PATH, API_KEY
+    )
 
     # Load the full export data (to get the actual content of the notes)
     export = STJsonExport.from_path(EXPORT_FILE_PATH)

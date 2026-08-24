@@ -214,3 +214,25 @@ def set_email_permission(
             logger.exception(f"Failed to update email_permission for user {user_id}")
             results[user_id] = False
     return results
+
+
+def match_emails_to_user_ids(
+    emails: Iterable[str], *, api_key: str, strip_subaddress: bool = True, refresh: bool = False
+) -> dict[str, int]:
+    """
+    Match a list of emails to ST user ids.
+
+    Loads every user once into a cached UserStore and matches locally, rather than making one
+    api call per email.
+
+    params:
+        emails: email addresses to look up
+        api_key: api key to auth with ST with
+        strip_subaddress: if True, also match without email subaddresses, ie treat
+            jack+123@example.com and jack@example.com as the same person, on either side
+        refresh: if True, ignore the on-disk user cache and re-fetch from the api
+
+    returns: mapping of the input email -> ST user id, only for emails that matched
+    """
+    store = UserStore.from_api(api_key, refresh=refresh)
+    return store.match_emails(emails, strip_subaddress=strip_subaddress)

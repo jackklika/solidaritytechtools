@@ -18,7 +18,7 @@ import os
 from pathlib import Path
 from time import sleep
 
-from solidaritytechtools import STClient, find_matches_emails
+from solidaritytechtools import STClient, match_emails_to_user_ids
 from solidaritytechtools.client.models import UserUpdate
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ EMAILS_CSV_PATH = Path.home() / "Downloads" / "an_report_email-opt-outs_2026-06-
 def unsubscribe_emails(emails: list[str], *, dry_run: bool = False) -> None:
     logger.info(f"Matching {len(emails)} emails to ST users...")
     # Refresh users for a real run so we don't act on a stale cache; dry runs reuse it.
-    matches: dict[str, int] = find_matches_emails(
+    matches: dict[str, int] = match_emails_to_user_ids(
         emails, api_key=API_KEY, strip_subaddress=STRIP_SUBADDRESS, refresh=not dry_run
     )
 
