@@ -77,6 +77,20 @@ with STClient(api_key="...") as client:
 
 The client also handles rate limiting, honoring `Retry-After` headers, so you can be confident scripts won't break when rate limited.
 
+#### Read-only clients
+
+For scripts that should only ever read, pass `read_only=True`. Anything attempting a write will raise `STReadOnlyError` before anything leaves the process, so you don't have to trust the api key to enforce it.
+
+We define "write" here as `POST`/`PATCH`/`DELETE` http calls, since the ST API has good discipline and keeps mutating state scoped to these. But understand that this is how we implement it -- so we aren't guarenteeing it is truely read-only. We are just doing our best.
+
+```python
+with STClient(api_key="...", read_only=True) as client:
+    client.get_users()       # fine
+    client.create_user(...)  # raises STReadOnlyError
+```
+
+Setting `ST_READ_ONLY=1` in the environment forces every client read-only no matter how it was constructed, which is useful for data notebooks and analysis jobs pointed at production. The envvar can only turn read-only on, never off.
+
 
 ### Contact Matching
 

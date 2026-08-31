@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
-from typing import Any, TypeVar
+from typing import Any, Final, TypeVar
 
 import httpx
 from pydantic import BaseModel
@@ -67,6 +68,15 @@ T = TypeVar("T", bound=BaseModel)
 
 logger = logging.getLogger(__name__)
 
+# Read-only clients allowlist reads rather than blocking known writes, so an endpoint added later
+# is safe by default. Every write in this API is a POST/PUT/DELETE; if ST ever ships a read-only
+# POST (a search endpoint, say), exempt that one (method, path) in _ReadOnlyTransport rather than
+# widening this set.
+ST_READ_METHODS: Final[frozenset[str]] = frozenset({"GET", "HEAD", "OPTIONS"})
+
+READ_ONLY_ENV_VAR: Final[str] = "ST_READ_ONLY"
+_TRUTHY: Final[frozenset[str]] = frozenset({"1", "true", "yes", "on"})
+
 
 class STError(Exception):
     """Base exception for Solidarity Tech API errors."""
@@ -101,6 +111,40 @@ class STRateLimitError(STError):
     pass
 
 
+class STReadOnlyError(STError):
+    """Raised when a write is attempted through a read-only client."""
+
+    pass
+
+
+def _read_only_requested(read_only: bool) -> bool:
+    """Whether read-only mode is on. The env var can only turn it on, never off."""
+    return read_only or os.environ.get(READ_ONLY_ENV_VAR, "").strip().lower() in _TRUTHY
+
+
+class _ReadOnlyTransport(httpx.BaseTransport):
+    """
+    Wraps a transport and refuses anything that is not a read.
+
+    STClient._request already blocks writes, but `client.client` is a public httpx.Client that
+    callers can use directly. Guarding the transport as well makes read-only a property of the
+    object rather than a convention: no write leaves the process, however it was issued.
+    """
+
+    def __init__(self, inner: httpx.BaseTransport):
+        self._inner = inner
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        if request.method.upper() not in ST_READ_METHODS:
+            raise STReadOnlyError(
+                f"{request.method} {request.url.path} blocked: this STClient is read-only"
+            )
+        return self._inner.handle_request(request)
+
+    def close(self) -> None:
+        self._inner.close()
+
+
 class STClient:
     def __init__(
         self,
@@ -111,12 +155,17 @@ class STClient:
         retry_backoff_s: float = 1.0,
         max_retry_wait_s: float = 60.0,
         transport: httpx.BaseTransport | None = None,
+        *,
+        read_only: bool = False,
     ):
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.max_retries = max_retries
         self.retry_backoff_s = retry_backoff_s
         self.max_retry_wait_s = max_retry_wait_s
+        self._read_only = _read_only_requested(read_only)
+        if self._read_only:
+            transport = _ReadOnlyTransport(transport or httpx.HTTPTransport())
         self.client = httpx.Client(
             base_url=self.base_url,
             headers={
@@ -126,6 +175,11 @@ class STClient:
             timeout=timeout,
             transport=transport,
         )
+
+    @property
+    def read_only(self) -> bool:
+        """True if this client refuses writes. Deliberately has no setter."""
+        return self._read_only
 
     def __enter__(self):
         return self
@@ -172,6 +226,8 @@ class STClient:
 
     def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         """Issue a request, retrying on 429 (rate limit) up to max_retries."""
+        if self._read_only and method.upper() not in ST_READ_METHODS:
+            raise STReadOnlyError(f"Cannot {method.upper()} {path}: this STClient is read-only")
         attempt = 0
         while True:
             response = self.client.request(method, path, **kwargs)
